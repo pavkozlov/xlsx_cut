@@ -1,15 +1,20 @@
-import xlrd
-import xlwt
+""" Для установки необходимых зависимостей выполнить команду:
+pip install -r requirements.txt"""
 import os
 from contextlib import contextmanager
 from collections import namedtuple
+import xlrd
+import xlwt
 
 FirstSecond = namedtuple('FirstSecond', 'first second')
 
 
 class XlsChanger:
+    """xlsx_cut - скрипт, модифицирующий Excel файл"""
+
     def __init__(self):
-        """Функция сначала принимает от пользователя максимальную длинну строки, затем номер файла, затем номер листа,
+        """Функция сначала принимает от пользователя максимальную длинну строки,
+        затем номер файла, затем номер листа,
         затем номер колоки в листе"""
         self.max_length = int(input('\nМаксимальная строка: '))
         print()
@@ -36,11 +41,11 @@ class XlsChanger:
         """Функция формирует генератор из значений всех ячеек, проверяя значнеия
         Затем, итератором передаёт по очереди значения на запись в файл"""
         result = (self.check_line(self.__getitem__(i), self.max_length) for i in range(len(self)))
-        with xlwt_context(self.file) as wb:
-            ws = wb.add_sheet(self.sheet.name)
-            for num, (f, s) in enumerate(result):
-                ws.write(num, self.column, f)
-                ws.write(num, self.column + 1, s)
+        with xlwt_context(self.file) as write_file:
+            write_sheet = write_file.add_sheet(self.sheet.name)
+            for num, (first_value, second_value) in enumerate(result):
+                write_sheet.write(num, self.column, first_value)
+                write_sheet.write(num, self.column + 1, second_value)
 
     def select_sheet(self) -> xlrd.sheet.Sheet:
         """Функция выводит на экран все листы в файле и просит выбрать нужный"""
@@ -51,9 +56,10 @@ class XlsChanger:
 
     @staticmethod
     def select_file() -> str:
-        """Функция выводит на экран все ФАЙЛЫ в текущей дирректории и просит выбрать нужный"""
-        onlyfiles = (file for file in os.listdir(os.path.curdir) if os.path.isfile(os.path.join(os.path.curdir, file)))
-        for num, file in enumerate(onlyfiles, start=1):
+        """Функция выводит на экран все ФАЙЛЫ в дирректории и просит выбрать нужный"""
+        only_files = (file for file in os.listdir(os.path.curdir)
+                      if os.path.isfile(os.path.join(os.path.curdir, file)))
+        for num, file in enumerate(only_files, start=1):
             print(num, file)
         file_number = int(input('\nВыберите файл: ')) - 1
         print()
@@ -64,13 +70,15 @@ class XlsChanger:
         """Функция выполняет проверку. Если длинна переданной ячейки больше максимальной длинны,
         вызывается функция очистки format_line, если меньше - создаётся именнованный кортеж формата
         (ЗНАЧЕНИЕ ЯЧЕЙКИ , None)"""
-        res = XlsChanger.format_line(line, max_length) if len(line) > max_length else FirstSecond(line, None)
+        res = XlsChanger.format_line(line, max_length) \
+            if len(line) > max_length \
+            else FirstSecond(line, None)
         return res
 
     @staticmethod
     def format_line(line: str, max_length: int) -> namedtuple:
-        """Функция выполняет очистку. Данные ячейки обрезаются по ближайшему пробелу и возвращается именованный кортеж
-        формата (ТЕКСТ ДО МАКСИМУМА СИМВОЛОВ , ОСТАЛЬНОЙ ТЕКСТ)
+        """Функция выполняет очистку. Данные ячейки обрезаются по ближайшему пробелу
+        и возвращается именованный кортеж формата (ТЕКСТ ДО МАКСИМУМА СИМВОЛОВ , ОСТАЛЬНОЙ ТЕКСТ)
         Если пробела нет, а слово длиннее максимума - создаётся именнованный кортеж формата
         (None , ЗНАЧЕНИЕ ЯЧЕЙКИ)"""
         counter = max_length
@@ -87,10 +95,10 @@ class XlsChanger:
 def xlwt_context(file):
     """Менеджер контекста"""
     try:
-        wb = xlwt.Workbook()
-        yield wb
+        write_file = xlwt.Workbook()
+        yield write_file
     finally:
-        wb.save(f'MODIFED_{file}')
+        write_file.save(f'MODIFED_{file}')
 
 
 if __name__ == '__main__':
