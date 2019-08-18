@@ -16,17 +16,22 @@ class XlsChanger:
         self.column = int(input('Выберите колонку (А = 1, B = 2 и т.д.): ')) - 1
         self.save_to_file()
 
+    def __del__(self):
+        print(f'Обработано {len(self)} строк')
+
+    def __getitem__(self, item) -> str:
+        return self.sheet.row(item)[self.column].value
+
+    def __len__(self) -> int:
+        return self.sheet.nrows
+
     def save_to_file(self):
-        result = (self.check_line(self.sheet.row(i)[self.column].value) for i in range(self.sheet.nrows))
+        result = (self.check_line(self.__getitem__(i), self.max_length) for i in range(len(self)))
         with xlwt_context(self.file) as wb:
             ws = wb.add_sheet(self.sheet.name)
             for num, (f, s) in enumerate(result):
                 ws.write(num, self.column, f)
                 ws.write(num, self.column + 1, s)
-
-    def check_line(self, line: str) -> namedtuple:
-        res = self.format_line(line) if len(line) > 30 else FirstSecond(line, None)
-        return res
 
     def select_file(self) -> str:
         print(f'Выберите файл:')
@@ -42,13 +47,24 @@ class XlsChanger:
         sheet_number = int(input('Ответ: ')) - 1
         return self.book.sheet_by_index(sheet_number)
 
-    def format_line(self, line: str) -> namedtuple:
-        counter = self.max_length
-        my_line = line[:counter]
-        while my_line[-1] != ' ':
-            counter -= 1
+    @staticmethod
+    def check_line(line: str, max_length: int) -> namedtuple:
+        res = XlsChanger.format_line(line, max_length) if len(line) > max_length else FirstSecond(line, None)
+        return res
+
+    @staticmethod
+    def format_line(line: str, max_length: int) -> namedtuple:
+        if len(line) > max_length:
+            counter = max_length
             my_line = line[:counter]
-        return FirstSecond(my_line, line[counter:])
+            while my_line[-1] != ' ':
+                counter -= 1
+                my_line = line[:counter]
+                if my_line == '':
+                    return FirstSecond(None, line)
+            return FirstSecond(my_line, line[counter:])
+        else:
+            return FirstSecond(line, None)
 
 
 @contextmanager
